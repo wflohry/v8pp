@@ -80,7 +80,7 @@ public:
 	}
 
 	static T& get(v8::Local<v8::External> ext)
-	{
+        {
 		external_data* value = static_cast<external_data*>(ext->Value());
 		return *static_cast<T*>(value->storage());
 	}

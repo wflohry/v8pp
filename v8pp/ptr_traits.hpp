@@ -92,7 +92,7 @@ struct shared_ptr_traits
 	template<typename T>
 	using object_pointer_type = std::shared_ptr<T>;
 	template<typename T>
-	using object_const_pointer_type = std::shared_ptr<T const>;
+        using object_const_pointer_type = const std::shared_ptr<T>;
 
 	using object_id = void*;
 
@@ -120,11 +120,11 @@ struct shared_ptr_traits
 		return std::make_shared<T>(src);
 	}
 
-	template<typename T>
-	static object_pointer_type<T> ptr_clone(object_const_pointer_type<T> src)
-	{
-		return std::const_pointer_cast<T>(src);
-	}
+        template<class T> static
+        object_pointer_type<T> ptr_clone(object_pointer_type<T> src)
+        {
+                return { src };
+        }
 
 	template<typename T>
 	static void destroy(object_pointer_type<T> const&)

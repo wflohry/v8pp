@@ -53,9 +53,6 @@ public:
 	/// V8 isolate associated with this context
 	v8::Isolate* isolate() { return isolate_; }
 
-	/// V8 context implementation
-	v8::Local<v8::Context> impl() { return to_local(isolate_, impl_); }
-
 	/// Library search path
 	std::string const& lib_path() const { return lib_path_; }
 
@@ -85,6 +82,42 @@ public:
 		cl.class_function_template()->SetClassName(v8pp::to_v8(isolate_, name));
 		return set(name, cl.js_function_template()->GetFunction(isolate_->GetCurrentContext()).ToLocalChecked());
 	}
+
+	v8::Local<v8::Context> impl();
+  
+    /// Enter the context 
+    void enter();
+
+    /// Exit the context
+    void exit();
+
+    /// The context_scope class is an RAII guard to enter and exit the contex's scope. 
+    /// In Multithreaded scenarios the users of the library must enter the context before running.
+    /// Note, 
+    /// 1. If the context owns the Isolate then this guard will also Enter the isolate.
+    /// 2. If the context owns the Isolate then this will also aquire the Locker for this thread  
+    class context_scope {
+      public:
+        context_scope(context &context);
+        ~context_scope();
+        context_scope(context_scope &&other) = delete;
+        context_scope(const context_scope &other) = delete;
+        context_scope &operator=(const context_scope &other) = delete;
+
+      private:
+        context &context_;
+        struct empty_struct {};
+        struct v8locks {
+          v8::Locker locker;
+          v8::Isolate::Scope scope;
+		  v8::HandleScope handle;
+        };
+        bool owns_locks_;
+        union {
+          empty_struct empty_;
+          v8locks locks_;
+        };
+    };
 
 private:
 	bool own_isolate_;

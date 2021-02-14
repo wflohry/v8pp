@@ -308,4 +308,54 @@ v8::Local<v8::Value> context::run_script(std::string const& source,
 	return scope.Escape(result);
 }
 
+v8::Local<v8::Context> context::impl() 
+{
+	v8::EscapableHandleScope handleScope(isolate_);
+	v8::Local<v8::Context> ret = v8::Local<v8::Context>::New(isolate_, impl_);
+	return handleScope.Escape(ret);
+}
+
+/// Enter the context 
+void context::enter() 
+{
+	v8::HandleScope scope(isolate_);
+    v8::Local<v8::Context> impl = to_local(isolate_, impl_);
+    impl->Enter();
+
+}
+
+    /// Exit the context
+void context::exit() 
+{
+
+	v8::HandleScope scope(isolate_);
+    v8::Local<v8::Context> impl = to_local(isolate_, impl_);
+    impl->Exit();
+}
+
+  /// The context_scope class is an RAII guard to enter and exit the contex's scope. 
+  /// In Multithreaded scenarios the users of the library must enter the context before running.
+  /// Note, 
+  /// 1. If the context owns the Isolate then this guard will also Enter the isolate.
+    /// 2. If the context owns the Isolate then this will also aquire the Locker for this thread  
+context::context_scope::context_scope(context &context) :
+  context_(context)
+{
+  owns_locks_ = context_.own_isolate_;
+  if (owns_locks_){
+	::new(&locks_.locker)v8::Locker(context_.isolate());
+	::new(&locks_.scope)v8::Isolate::Scope(context_.isolate());
+	::new(&locks_.handle)v8::HandleScope(context_.isolate());
+  }
+  context_.enter();
+}
+
+context::context_scope::~context_scope() {
+  context_.exit();
+  if (owns_locks_){
+	locks_.handle.~HandleScope();
+	locks_.scope.~Scope();
+	locks_.locker.~Locker();
+  }
+}
 } // namespace v8pp

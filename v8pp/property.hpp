@@ -242,7 +242,7 @@ struct r_property_impl<Get, Set, false>
 		auto obj = v8pp::class_<class_type, Traits>::unwrap_object(info.GetIsolate(), info.This());
 		assert(obj);
 
-		property_type const& prop = detail::get_external_data<property_type>(info.Data());
+        property_type const& prop = detail::external_data::get<property_type>(info.Data());
 		assert(function_traits<Get>::is_not_empty(prop.getter));
 
 		if (function_traits<Get>::is_not_empty(prop.getter))
@@ -381,7 +381,7 @@ struct rw_property_impl<Get, Set, false>
 			typename function_traits<Set>::arguments>::type>::type;
 		auto obj = v8pp::class_<class_type, Traits>::unwrap_object(info.GetIsolate(), info.This());
 		assert(obj);
-		property_type const& prop = detail::get_external_data<property_type>(info.Data());
+        property_type const& prop = detail::external_data::get<property_type>(info.Data());
 		assert(function_traits<Set>::is_not_empty(prop.setter));
 
 		if (function_traits<Set>::is_not_empty(prop.setter))
@@ -442,7 +442,7 @@ struct rw_member_property {
 		auto obj = v8pp::class_<class_type, Traits>::unwrap_object(info.GetIsolate(), info.This());
 		assert(obj);
 
-		property_type const& prop = detail::get_external_data<property_type>(info.Data());
+        property_type const& prop = detail::external_data::get<property_type>(info.Data());
 		assert(prop.getter);
         assert(prop.attr);
 
@@ -491,7 +491,7 @@ struct rw_member_property {
 		auto obj = v8pp::class_<class_type, Traits>::unwrap_object(info.GetIsolate(), info.This());
 		assert(obj);
 
-		property_type const& prop = detail::get_external_data<property_type>(info.Data());
+        property_type const& prop = detail::external_data::get<property_type>(info.Data());
 		assert(prop.setter);
 
 		if (obj && prop.setter)

@@ -348,7 +348,7 @@ public:
 
 		class_info_.class_function_template()->PrototypeTemplate()
 			->SetAccessor(v8pp::to_v8(isolate(), name), getter, setter,
-				detail::set_external_data(isolate(),
+                detail::external_data::set(isolate(),
 					std::forward<property_type>(prop)), v8::DEFAULT,
 				v8::PropertyAttribute(v8::DontDelete | (setter ? 0 : v8::ReadOnly)));
 		return *this;
@@ -372,7 +372,7 @@ public:
 
 		class_info_.class_function_template()->PrototypeTemplate()
 			->SetAccessor(v8pp::to_v8(isolate(), name), getter, nullptr,
-				detail::set_external_data(isolate(),
+                detail::external_data::set(isolate(),
 					std::forward<property_type>(prop)), v8::DEFAULT,
 				v8::PropertyAttribute(v8::DontDelete | v8::ReadOnly));
 		return *this;
@@ -404,7 +404,7 @@ public:
 
         class_info_.class_function_template()->PrototypeTemplate()
                 ->SetAccessor(v8pp::to_v8(isolate(), name), getter, setter,
-                              detail::set_external_data(isolate(),
+                              detail::external_data::set(isolate(),
                                                         std::forward<property_type>(prop)), v8::DEFAULT,
                               v8::PropertyAttribute(v8::DontDelete | (setter ? 0 : v8::ReadOnly)));
         return *this;
@@ -426,7 +426,7 @@ public:
 
         class_info_.class_function_template()->PrototypeTemplate()
                 ->SetAccessor(v8pp::to_v8(isolate(), name), getter, nullptr,
-                              detail::set_external_data(isolate(),
+                              detail::external_data::set(isolate(),
                                                         std::forward<attribute_type>(attr)), v8::DEFAULT,
                               v8::PropertyAttribute(v8::DontDelete |  v8::ReadOnly));
         return *this;

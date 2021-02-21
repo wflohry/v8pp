@@ -168,7 +168,7 @@ struct r_property_impl<Get, Set, true>
 		auto obj = v8pp::class_<class_type, Traits>::unwrap_object(info.GetIsolate(), info.This());
 		assert(obj);
 
-		property_type const& prop = detail::get_external_data<property_type>(info.Data());
+		property_type const& prop = detail::external_data::get<property_type>(info.Data());
 		assert(prop.getter);
 
 		if (obj && prop.getter)
@@ -220,7 +220,7 @@ struct r_property_impl<Get, Set, false>
 		v8::PropertyCallbackInfo<v8::Value> const& info)
 	try
 	{
-		property_type const& prop = detail::get_external_data<property_type>(info.Data());
+		property_type const& prop = detail::external_data::get<property_type>(info.Data());
 		assert(prop.getter);
 
 		if (prop.getter)
@@ -309,7 +309,7 @@ struct rw_property_impl<Get, Set, true>
 		auto obj = v8pp::class_<class_type, Traits>::unwrap_object(info.GetIsolate(), info.This());
 		assert(obj);
 
-		property_type const& prop = detail::get_external_data<property_type>(info.Data());
+		property_type const& prop = detail::external_data::get<property_type>(info.Data());
 		assert(prop.setter);
 
 		if (obj && prop.setter)
@@ -359,7 +359,7 @@ struct rw_property_impl<Get, Set, false>
 		v8::PropertyCallbackInfo<void> const& info)
 	try
 	{
-		property_type const& prop = detail::get_external_data<property_type>(info.Data());
+		property_type const& prop = detail::external_data::get<property_type>(info.Data());
 		assert(prop.setter);
 
 		if (prop.setter)

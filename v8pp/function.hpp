@@ -46,6 +46,17 @@ class external_data_base
 {
 public:
     static constexpr uint16_t class_id = 1;
+
+    external_data_base(v8::ArrayBuffer::Allocator * allocator, size_t sz) : allocator_(allocator), sz(sz) {}
+    v8::ArrayBuffer::Allocator * allocator_ = nullptr;
+    size_t sz = 0;
+
+    static void destroy(external_data_base * data){
+        data->~external_data_base();
+        const auto allocator = data->allocator_;
+        allocator->Free(data, data->sz);
+    }
+protected:
     virtual ~external_data_base(){
 
     }
@@ -57,14 +68,17 @@ class external_data final : public external_data_base
 public:
 	static v8::Local<v8::External> set(v8::Isolate* isolate, T&& data)
 	{
-		external_data* value = new external_data;
+        auto allocator = isolate->GetArrayBufferAllocator();
+        const size_t sz = sizeof(external_data);
+        external_data* value = (external_data*) allocator->AllocateUninitialized(sz);
+        new (value) external_data(allocator, sz);
 		try
 		{
 			new (value->storage()) T(std::forward<T>(data));
 		}
 		catch (...)
-		{
-			delete value;
+        {
+            external_data_base::destroy(value);
 			throw;
 		}
 
@@ -73,8 +87,8 @@ public:
 		value->pext_.SetWrapperClassId(external_data_base::class_id);
 		value->pext_.SetWeak(value,
 			[](v8::WeakCallbackInfo<external_data> const& data)
-		{
-			delete data.GetParameter();
+        {
+            external_data_base::destroy(data.GetParameter());
 		}, v8::WeakCallbackType::kParameter);
 		return ext;
 	}
@@ -86,6 +100,7 @@ public:
 	}
 
 private:
+    external_data(v8::ArrayBuffer::Allocator * allocator, size_t sz): external_data_base(allocator, sz) {}
 	void* storage() { return &storage_; }
 	~external_data()
 	{

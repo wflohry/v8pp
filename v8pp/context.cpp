@@ -46,7 +46,7 @@ namespace {
                 v8::Local<v8::External> ext = value->Get(isolate_).As<v8::External>();
                 if (!ext.IsEmpty()){
                     auto ptr =static_cast<v8pp::detail::external_data_base*>(ext->Value());
-                    delete ptr;
+                    v8pp::detail::external_data_base::destroy(ptr);
                 }
             }
         }

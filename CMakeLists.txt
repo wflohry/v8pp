@@ -8,7 +8,7 @@ endif()
 
 option(v8_compress_pointers "Whether v8 was build with V8_COMPRESS_POINTERS" on)
 option(v8_monolith "Whether v8 was built with monolith" ON)
-option(v8_shared "Whether v8 was built as a shared library" ON)
+option(v8_shared "Whether v8 was built as a shared library" OFF)
 option(v8_copy_shared "Whether to copy v8 so/dll to output directory" OFF)
 if (WIN32)
     set(v8_search_libdir "")

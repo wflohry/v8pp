@@ -545,7 +545,7 @@ public:
 		v8::Local<v8::Object> wrapped_object = class_info.find_v8_object(Traits::key(const_cast<T*>(&obj)));
 		if (wrapped_object.IsEmpty() && class_info.auto_wrap_objects())
 		{
-			object_pointer_type clone = Traits::clone(obj);
+            object_pointer_type clone = Traits::clone(isolate, obj);
 			if (clone)
 			{
 				wrapped_object = class_info.wrap_object(clone, true);

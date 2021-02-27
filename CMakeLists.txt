@@ -3,7 +3,7 @@ set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 project(v8pp LANGUAGES CXX C ASM)
 
 if (NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 14)
+  set(CMAKE_CXX_STANDARD 17)
 endif()
 
 option(v8_compress_pointers "Whether v8 was build with V8_COMPRESS_POINTERS" on)

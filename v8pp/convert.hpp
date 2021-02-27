@@ -71,7 +71,7 @@ struct convert<std::basic_string<Char, Traits, Alloc>>
 			throw invalid_argument(isolate, value, "String");
 		}
 
-		if (sizeof(Char) == 1)
+        if constexpr (sizeof(Char) == 1)
 		{
 			v8::String::Utf8Value const str(isolate, value);
 			return from_type(reinterpret_cast<Char const*>(*str), str.length());
@@ -85,7 +85,7 @@ struct convert<std::basic_string<Char, Traits, Alloc>>
 
 	static to_type to_v8(v8::Isolate* isolate, from_type const& value)
 	{
-		if (sizeof(Char) == 1)
+        if constexpr (sizeof(Char) == 1)
 		{
 			return v8::String::NewFromUtf8(isolate,
 				reinterpret_cast<char const*>(value.data()),
@@ -132,7 +132,7 @@ struct convert<Char const*, typename std::enable_if<
 			throw invalid_argument(isolate, value, "String");
 		}
 
-		if (sizeof(Char) == 1)
+        if constexpr (sizeof(Char) == 1)
 		{
 			v8::String::Utf8Value const str(isolate, value);
 			return from_type(reinterpret_cast<Char const*>(*str), str.length());
@@ -146,7 +146,7 @@ struct convert<Char const*, typename std::enable_if<
 
 	static to_type to_v8(v8::Isolate* isolate, Char const* value, size_t len = ~0)
 	{
-		if (sizeof(Char) == 1)
+        if constexpr (sizeof(Char) == 1)
 		{
 			return v8::String::NewFromUtf8(isolate,
 				reinterpret_cast<char const*>(value),
@@ -212,9 +212,9 @@ struct convert<T, typename std::enable_if<std::is_integral<T>::value>::type>
 			throw invalid_argument(isolate, value, "Number");
 		}
 
-		if (bits <= 32)
+        if constexpr (bits <= 32)
 		{
-			if (is_signed)
+            if constexpr (is_signed)
 			{
 				return static_cast<T>(value->Int32Value(isolate->GetCurrentContext()).FromJust());
 			}
@@ -231,9 +231,9 @@ struct convert<T, typename std::enable_if<std::is_integral<T>::value>::type>
 
 	static to_type to_v8(v8::Isolate* isolate, T value)
 	{
-		if (bits <= 32)
+        if constexpr (bits <= 32)
 		{
-			if (is_signed)
+            if constexpr (is_signed)
 			{
 				return v8::Integer::New(isolate,
 					static_cast<int32_t>(value));

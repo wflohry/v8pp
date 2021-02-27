@@ -76,7 +76,9 @@ struct raw_ptr_traits
 	template<typename T>
     static void destroy(v8::Isolate * isolate, object_pointer_type<T> const& ptr)
 	{
-        ptr->~T();
+        if constexpr (!std::is_trivially_destructible<T>::value){
+            ptr->~T();
+        }
         isolate->GetArrayBufferAllocator()->Free(ptr, sizeof(T));
 	}
 

@@ -24,7 +24,7 @@ struct factory
 	template<typename ...Args>
 	static object_pointer_type create(v8::Isolate* isolate, Args... args)
 	{
-		object_pointer_type object = Traits::template create<T>(std::forward<Args>(args)...);
+        object_pointer_type object = Traits::template create<T>(isolate, std::forward<Args>(args)...);
 		isolate->AdjustAmountOfExternalAllocatedMemory(
 			static_cast<int64_t>(Traits::object_size(object)));
 		return object;
@@ -34,7 +34,7 @@ struct factory
 	{
 		isolate->AdjustAmountOfExternalAllocatedMemory(
 			-static_cast<int64_t>(Traits::object_size(object)));
-		Traits::destroy(object);
+        Traits::destroy(isolate, object);
 	}
 };
 

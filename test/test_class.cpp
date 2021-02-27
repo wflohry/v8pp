@@ -57,7 +57,7 @@ struct X : Xbase
 template<typename Traits, typename X_ptr = typename v8pp::class_<X, Traits>::object_pointer_type>
 static X_ptr create_X(v8::FunctionCallbackInfo<v8::Value> const& args)
 {
-	X_ptr x(new X);
+    X_ptr x(Traits::template create<X>(args.GetIsolate()));
 	switch (args.Length())
 	{
 	case 1:
@@ -92,15 +92,19 @@ namespace v8pp {
 template<>
 struct factory<Y, v8pp::raw_ptr_traits>
 {
-	static Y* create(v8::Isolate*, int x) { return new Y(x); }
-	static void destroy(v8::Isolate*, Y* object) { delete object; }
+    static Y* create(v8::Isolate* isolate, int x) {
+        return v8pp::raw_ptr_traits::create<Y>(isolate, x);
+    }
+    static void destroy(v8::Isolate* isolate, Y* object) {
+        v8pp::raw_ptr_traits::destroy(isolate, object);
+    }
 };
 template<>
 struct factory<Y, v8pp::shared_ptr_traits>
 {
-	static std::shared_ptr<Y> create(v8::Isolate*, int x)
+    static std::shared_ptr<Y> create(v8::Isolate* isolate, int x)
 	{
-		return std::make_shared<Y>(x);
+        return v8pp::shared_ptr_traits::create<Y>(isolate, x);
 	}
 	static void destroy(v8::Isolate*, std::shared_ptr<Y> const&) {}
 };
@@ -133,9 +137,9 @@ void test_class_()
 		return create_X<Traits>(args);
 	};
 	Z extra_dtor_context;
-	auto const X_dtor = [extra_dtor_context](v8::Isolate*, typename Traits::template object_pointer_type<X> const& obj)
+    auto const X_dtor = [extra_dtor_context](v8::Isolate* isolate, typename Traits::template object_pointer_type<X> const& obj)
 	{
-		Traits::destroy(obj);
+        Traits::destroy(isolate, obj);
 	};
 
 	v8pp::class_<X, Traits> X_class(isolate, X_dtor);
@@ -297,6 +301,8 @@ void test_class_()
 	v8pp::class_<Y, Traits>::destroy(isolate);
 	check_eq("Y count after class_<Y>::destroy", Y::instance_count,
 		1 + 2 * use_shared_ptr); // y1 + (y2 + y3 when use_shared_ptr)
+
+    v8pp::factory<Y, Traits>::destroy(isolate, y1);
 }
 
 template<typename Traits>

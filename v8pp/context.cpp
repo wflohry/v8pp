@@ -150,15 +150,15 @@ void context::run_file(v8::FunctionCallbackInfo<v8::Value> const& args)
 struct array_buffer_allocator : v8::ArrayBuffer::Allocator
 {
 	void* Allocate(size_t length)
-	{
-		return calloc(length, 1);
+    {
+        return calloc(length, 1);
 	}
 	void* AllocateUninitialized(size_t length)
-	{
-		return malloc(length);
+    {
+        return malloc(length);
 	}
 	void Free(void* data, size_t length)
-	{
+    {
 		free(data); (void)length;
 	}
 };

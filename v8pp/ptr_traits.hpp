@@ -44,14 +44,14 @@ struct raw_ptr_traits
     template<typename T, typename ...Args>
     static object_pointer_type<T> create(v8::Isolate * isolate, Args&&... args)
 	{
-        auto data = (T*) isolate->GetArrayBufferAllocator()->AllocateUninitialized(sizeof(T));
+        auto data = (T*) isolate->GetArrayBufferAllocator()->Allocate(sizeof(T));
         return new(data) T(std::forward<Args>(args)...);
 	}
 
 	template<typename T>
     static object_pointer_type<T> clone(v8::Isolate * isolate, T const& src)
 	{
-        auto data = (T*) isolate->GetArrayBufferAllocator()->AllocateUninitialized(sizeof(T));
+        auto data = (T*) isolate->GetArrayBufferAllocator()->Allocate(sizeof(T));
         return new(data) T(src);
 	}
 
@@ -61,7 +61,7 @@ struct raw_ptr_traits
     typename std::enable_if<std::is_copy_constructible<T>::value, object_pointer_type<T>>::type
     ptr_clone(v8::Isolate * isolate, object_const_pointer_type<T> src)
 	{
-        auto data = (T*) isolate->GetArrayBufferAllocator()->AllocateUninitialized(sizeof(T));
+        auto data = (T*) isolate->GetArrayBufferAllocator()->Allocate(sizeof(T));
         return new(data) T(*src);
 	}
 

@@ -73,15 +73,6 @@ struct raw_ptr_traits
 		return nullptr;
 	}
 
-
-    template<class T> 
-    static 
-    typename std::enable_if<std::is_copy_constructible<T>::value, object_pointer_type<T>>::type
-	ptr_clone(object_const_pointer_type<T> src)
-	{
-		return new T(*src);
-	}
-
     template<class T> 
     static 
     typename std::enable_if<!std::is_copy_constructible<T>::value, object_pointer_type<T>>::type
@@ -144,11 +135,11 @@ struct shared_ptr_traits
 		return std::make_shared<T>(src);
 	}
 
-        template<class T> static
-        object_pointer_type<T> ptr_clone(object_pointer_type<T> src)
-        {
-                return { src };
-        }
+    template<class T> static
+    object_pointer_type<T> ptr_clone(v8::Isolate *, object_pointer_type<T> src)
+    {
+            return { src };
+    }
 
 	template<typename T>
     static void destroy(v8::Isolate * isolate, object_pointer_type<T> const&)

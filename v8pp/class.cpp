@@ -16,7 +16,7 @@ template
 void classes::remove<raw_ptr_traits>(v8::Isolate* isolate, type_info const& type);
 
 template
-object_registry<raw_ptr_traits>& classes::find<raw_ptr_traits>(v8::Isolate* isolate,
+object_registry<raw_ptr_traits>* classes::find<raw_ptr_traits>(v8::Isolate* isolate,
 	type_info const& type);
 
 template
@@ -27,7 +27,7 @@ template
 void classes::remove<shared_ptr_traits>(v8::Isolate* isolate, type_info const& type);
 
 template
-object_registry<shared_ptr_traits>& classes::find<shared_ptr_traits>(v8::Isolate* isolate,
+object_registry<shared_ptr_traits>* classes::find<shared_ptr_traits>(v8::Isolate* isolate,
 	type_info const& type);
 
 

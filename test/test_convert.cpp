@@ -163,6 +163,21 @@ struct V2 {
 };
 } // namespace
 
+template <typename Variant>
+struct VariantCheck {
+    VariantCheck(v8::Isolate * isolate) : isolate(isolate) {}
+    v8::Isolate * isolate;
+
+    template <typename T>
+    void operator()(T && value)
+    {
+        Variant values = value;
+        auto local = v8pp::convert<Variant>::to_v8(isolate, values);
+        auto back = v8pp::convert<Variant>::from_v8(isolate, local);
+        check_eq(v8pp::detail::type_id<Variant>().name(), std::get<std::decay_t<T>>(back), value);
+    }
+};
+
 void test_convert()
 {
 	v8pp::context context;
@@ -230,18 +245,24 @@ void test_convert()
     V2_class.reference_external(isolate, V2_);
 
     using Variant = std::variant<U, std::shared_ptr<V>, int, std::string, U2, std::shared_ptr<V2>>;
-    auto runVariantCheck = [isolate]<typename T>(T && value){
-        Variant values = value;
-        auto local = v8pp::convert<Variant>::to_v8(isolate, values);
-        auto back = v8pp::convert<Variant>::from_v8(isolate, local);
-        check_eq(v8pp::detail::type_id<Variant>().name(), std::get<std::decay_t<T>>(back), value);
-    };
-    runVariantCheck(U { .value = 2 });
-    runVariantCheck(V_);
-    runVariantCheck(-1);
-    runVariantCheck(std::string("Hello"));
-    runVariantCheck(U2 { .value = 3. });
-    runVariantCheck(V2_);
+    VariantCheck<Variant> check(context.isolate());
+    check(U { .value = 2 });
+    check(V_);
+    check(-1);
+    check(std::string("Hello"));
+    check(U2 { .value = 3. });
+    check(V2_);
+
+    using ArithmeticVariant = std::variant<bool, float, int32_t>;
+    VariantCheck<ArithmeticVariant> checkArithmetic(context.isolate());
+    checkArithmetic(bool{true});
+    checkArithmetic(float{5.5f});
+    checkArithmetic(int32_t{2});
 
 
+    using ArithmeticVariantReversed = std::variant<int32_t, float, bool>;
+    VariantCheck<ArithmeticVariantReversed> checkArithmeticReversed(context.isolate());
+    checkArithmetic(bool{true});
+    checkArithmetic(float{5.5f});
+    checkArithmetic(int32_t{2});
 }

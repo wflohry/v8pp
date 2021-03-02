@@ -723,11 +723,14 @@ struct convert<std::variant<Ts...>>
     using from_type = std::variant<Ts...>;
     using to_type = v8::Local<v8::Value>;
     static constexpr std::size_t N = sizeof ... (Ts);
+
     template <typename T> struct isArray : std::false_type {};
     template <typename T, typename Alloc> struct isArray<std::vector<T, Alloc>> : std::true_type {};
     template <typename T, std::size_t N> struct isArray<std::array<T, N>> : std::true_type {};
     template <typename T> struct isBoolean : std::false_type {};
     template <> struct isBoolean<bool> : std::true_type {};
+    template <typename T> struct isIntegralNotBool : std::is_integral<T> {};
+    template <> struct isIntegralNotBool<bool> : std::false_type {};
     template <typename T> struct isObj : v8pp::is_wrapped_class<T> {};
     template <typename T> struct isObj<std::shared_ptr<T>> : std::true_type {};
     template <typename T> struct isSharedPtr : std::false_type {};
@@ -760,23 +763,16 @@ struct convert<std::variant<Ts...>>
         } else if (value->IsArray()){
             out = getObject<isArray, Ts...>(isolate, value);
         } else if (value->IsNumber()){
-            // first, attempt to find the most suitable
+            // Note: 5.f will be converted to an integer type if available,
+            // since internally v8 stores all values (including integer types) as double
             const double value_ = value->NumberValue(context).FromJust();
             if (ceil(value_) == value_){
-                out = getObject<std::is_floating_point, Ts...>(isolate, value);
+                out = getObjectAlternate<isIntegralNotBool, std::is_floating_point, isBoolean>(isolate, value);
             } else {
-                out = getObject<std::is_integral, Ts...>(isolate, value);
-            }
-            // if that doesn't work, find any arithmetic
-            if (!out){
-                out = getObject<std::is_arithmetic, Ts...>(isolate, value);
+                out = getObjectAlternate<std::is_floating_point, isIntegralNotBool, isBoolean>(isolate, value);
             }
         } else if (value->IsBoolean()){
-            out = getObject<isBoolean, Ts...>(isolate, value);
-            if (!out){
-                // implicit cast
-                out = getObject<std::is_integral, Ts...>(isolate, value);
-            }
+            out = getObjectAlternate<isBoolean, isIntegralNotBool>(isolate, value);
         } else if (value->IsString()){
             out = getObject<isString, Ts...>(isolate, value);
         } else {
@@ -812,8 +808,20 @@ private:
                 return out;
             }
         }
+        return std::nullopt;
     }
 
+    template <template <typename T> typename condition, template <typename T> typename ... conditions>
+    static std::optional<std::variant<Ts...>> getObjectAlternate(v8::Isolate* isolate, v8::Local<v8::Value> value)
+    {
+        if (auto out = getObject<condition, Ts...>(isolate, value)){
+            return out;
+        }
+        if constexpr (sizeof ... (conditions) > 0){
+            return getObjectAlternate<conditions...>(isolate, value);
+        }
+        return std::nullopt;
+    }
 
     template <template <typename T> typename  condition, typename T, typename ... Ts_>
     static std::optional<std::variant<Ts...>> getObject(v8::Isolate* isolate, v8::Local<v8::Value> value)

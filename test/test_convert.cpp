@@ -173,6 +173,30 @@ void test_convert()
 	p.name = "Al"; p.age = 33;
 	test_conv(isolate, p);
 
+
+    std::tuple<size_t, bool> tuple_1{2, true};
+    test_conv(isolate, tuple_1);
+
+    std::tuple<size_t, bool, std::string> tuple_2{2, true, "test"};
+    test_conv(isolate, tuple_2);
+
+    std::tuple<size_t, size_t, size_t> tuple_3{1, 2, 3};
+    test_conv(isolate, tuple_3);
+
+    check_ex<v8pp::invalid_argument>("Tuple", [isolate, &tuple_1]()
+    {
+        // incorrect number of elements
+         v8::Local<v8::Array> tuple_1_ = v8pp::to_v8(isolate, tuple_1);
+         v8pp::from_v8<std::tuple<size_t, bool, std::string>>(isolate, tuple_1_);
+    });
+
+    check_ex<v8pp::invalid_argument>("String", [isolate, &tuple_1]()
+     {
+        // wrong types
+        v8::Local<v8::Array> tuple_1_ = v8pp::to_v8(isolate, tuple_1);
+        v8pp::from_v8<std::tuple<size_t, std::string>>(isolate, tuple_1_);
+     });
+
     struct U {
         int value = 1;
         bool operator==(const U& other) const = default;
@@ -220,6 +244,5 @@ void test_convert()
     runVariantCheck(std::string("Hello"));
     runVariantCheck(U2 { .value = 3. });
     runVariantCheck(V2_);
-
 
 }

@@ -137,7 +137,7 @@ public:
 	static void remove(v8::Isolate* isolate, type_info const& type);
 
 	template<typename Traits>
-	static object_registry<Traits>& find(v8::Isolate* isolate, type_info const& type);
+    static object_registry<Traits>* find(v8::Isolate* isolate, type_info const& type);
 
 	static void remove_all(v8::Isolate* isolate);
 
@@ -165,6 +165,12 @@ class class_
 	using object_id = typename object_registry::object_id;
 	using pointer_type = typename object_registry::pointer_type;
 	using const_pointer_type = typename object_registry::const_pointer_type;
+    static object_registry& get_class_info(v8::Isolate* isolate, detail::type_info const& existing){
+        if (auto class_info_ = detail::classes::find<Traits>(isolate, existing)){
+            return *class_info_;
+        }
+        throw std::runtime_error("Could not find class_info for existing type.");
+    }
 
 public:
 	using object_pointer_type = typename Traits::template object_pointer_type<T>;
@@ -184,7 +190,7 @@ public:
 	using dtor_function = std::function<void (v8::Isolate* isolate, object_pointer_type const& obj)>;
 
 	explicit class_(v8::Isolate* isolate, detail::type_info const& existing)
-		: class_info_(detail::classes::find<Traits>(isolate, existing))
+        : class_info_(get_class_info(isolate, existing))
 	{
 	}
 
@@ -223,13 +229,16 @@ public:
 		static_assert(std::is_base_of<U, T>::value,
 			"Class U should be base for class T");
 		//TODO: std::is_convertible<T*, U*> and check for duplicates in hierarchy?
-		object_registry& base = classes::find<Traits>(isolate(), type_id<U>());
-		class_info_.add_base(base, [](pointer_type const& ptr) -> pointer_type
+        object_registry * base = classes::find<Traits>(isolate(), type_id<U>());
+        if (!base){
+            throw std::runtime_error("Inheritance error: type not found.");
+        }
+        class_info_.add_base(*base, [](pointer_type const& ptr) -> pointer_type
 		{
 			return pointer_type(Traits::template static_pointer_cast<U>(
 				Traits::template static_pointer_cast<T>(ptr)));
-		});
-		class_info_.js_function_template()->Inherit(base.class_function_template());
+        });
+        class_info_.js_function_template()->Inherit(base->class_function_template());
 		return *this;
 	}
 
@@ -478,14 +487,21 @@ public:
 		object_pointer_type const& ext)
 	{
 		using namespace detail;
-		return classes::find<Traits>(isolate, type_id<T>()).wrap_object(ext, false);
+        if (auto class_info_ = classes::find<Traits>(isolate, type_id<T>())){
+            return class_info_->wrap_object(ext, false);
+        }
+        return {};
 	}
 
 	/// Remove external reference from JavaScript
 	static void unreference_external(v8::Isolate* isolate, object_pointer_type const& ext)
 	{
 		using namespace detail;
-		return classes::find<Traits>(isolate, type_id<T>()).remove_object(Traits::pointer_id(ext));
+        if (auto class_info_ = classes::find<Traits>(isolate, type_id<T>())){
+            class_info_->remove_object(Traits::pointer_id(ext));
+        } else {
+            throw std::runtime_error("Cannot unreference external; object not found.");
+        }
 	}
 
 	/// As reference_external but delete memory for C++ object
@@ -493,16 +509,22 @@ public:
 	/// to allocate `ext`
 	static v8::Local<v8::Object> import_external(v8::Isolate* isolate, object_pointer_type const& ext)
 	{
-		using namespace detail;
-		return classes::find<Traits>(isolate, type_id<T>()).wrap_object(ext, true);
+        using namespace detail;
+        if (auto class_info = classes::find<Traits>(isolate, type_id<T>())){
+            return class_info->wrap_object(ext, true);
+        }
+        return {};
 	}
 
 	/// Get wrapped object from V8 value, may return nullptr on fail.
 	static object_pointer_type unwrap_object(v8::Isolate* isolate, v8::Local<v8::Value> value)
 	{
 		using namespace detail;
-		return Traits::template static_pointer_cast<T>(
-			classes::find<Traits>(isolate, type_id<T>()).unwrap_object(value));
+        if (auto class_iter = classes::find<Traits>(isolate, type_id<T>())){
+            return Traits::template static_pointer_cast<T>(
+                class_iter->unwrap_object(value));
+        }
+        return nullptr;
 	}
 
 	/// Create a wrapped C++ object and import it into JavaScript
@@ -513,42 +535,33 @@ public:
 			factory<T, Traits>::create(isolate, std::forward<Args>(args)...));
 	}
 
-	// Find V8 object handle for a wrapped C++ object, may return empty handle on fail.
-    // When auto-wrap, returned object is automatically wrapped. If auto_wrap
-    // is true, the returned object is wrapped automatically. In the case of
-    // shared_ptr_traits the returned item is the same underlying pointer. In
-    // thie case the constness is lost, but this is also the case when the
-    // object isn't auto-wrapped.
-	static v8::Local<v8::Object> find_object(v8::Isolate* isolate,
+	/// Find V8 object handle for a wrapped C++ object, may return empty handle on fail.
+    static v8::Local<v8::Object> find_object(v8::Isolate* isolate,
 		object_const_pointer_type const& obj)
 	{
-		using namespace detail;
-		detail::object_registry<Traits>& class_info = classes::find<Traits>(isolate, type_id<T>());
-        v8::Local<v8::Object> wrapped_object = class_info.find_v8_object(Traits::const_pointer_cast(obj));
-		if (wrapped_object.IsEmpty() && class_info.auto_wrap_objects())
-		{
-            object_pointer_type clone = Traits::ptr_clone(isolate, obj);
-			if (clone)
-			{
-				wrapped_object = class_info.wrap_object(clone, true);
-			}
-		}
-		return wrapped_object;
-	}
+        using namespace detail;
+        if (auto class_info = classes::find<Traits>(isolate, type_id<T>())){
+            return class_info->find_v8_object(Traits::const_pointer_cast(obj));
+        }
+        return {};
+    }
 
 	/// Find V8 object handle for a wrapped C++ object, may return empty handle on fail
 	/// or wrap a copy of the obj if class_.auto_wrap_objects()
 	static v8::Local<v8::Object> find_object(v8::Isolate* isolate, T const& obj)
 	{
 		using namespace detail;
-		detail::object_registry<Traits>& class_info = classes::find<Traits>(isolate, type_id<T>());
-		v8::Local<v8::Object> wrapped_object = class_info.find_v8_object(Traits::key(const_cast<T*>(&obj)));
-		if (wrapped_object.IsEmpty() && class_info.auto_wrap_objects())
+        detail::object_registry<Traits>* class_info = classes::find<Traits>(isolate, type_id<T>());
+        if (!class_info){
+            return {};
+        }
+        v8::Local<v8::Object> wrapped_object = class_info->find_v8_object(Traits::key(const_cast<T*>(&obj)));
+        if (wrapped_object.IsEmpty() && class_info->auto_wrap_objects())
 		{
             object_pointer_type clone = Traits::clone(isolate, obj);
 			if (clone)
-			{
-				wrapped_object = class_info.wrap_object(clone, true);
+            {
+                wrapped_object = class_info->wrap_object(clone, true);
 			}
 		}
 		return wrapped_object;
@@ -558,7 +571,11 @@ public:
 	static void destroy_object(v8::Isolate* isolate, object_pointer_type const& obj)
 	{
 		using namespace detail;
-		classes::find<Traits>(isolate, type_id<T>()).remove_object(Traits::pointer_id(obj));
+        if (auto classImpl = classes::find<Traits>(isolate, type_id<T>())){
+            classImpl->remove_object(Traits::pointer_id(obj));
+        } else {
+            throw std::runtime_error("Could not destroy class because traits not found.");
+        }
 	}
 
 	/// Destroy all wrapped C++ objects of this class

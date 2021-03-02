@@ -315,7 +315,7 @@ V8PP_IMPL void classes::remove(v8::Isolate* isolate, type_info const& type)
 }
 
 template<typename Traits>
-V8PP_IMPL object_registry<Traits>& classes::find(v8::Isolate* isolate, type_info const& type)
+V8PP_IMPL object_registry<Traits>* classes::find(v8::Isolate* isolate, type_info const& type)
 {
 	classes* info = instance(operation::get, isolate);
 	type_info const& traits = type_id<Traits>();
@@ -331,7 +331,7 @@ V8PP_IMPL object_registry<Traits>& classes::find(v8::Isolate* isolate, type_info
 					+ pointer_str(isolate) + " before of "
 					+ class_info(type, traits).class_name());
 			}
-			return *static_cast<object_registry<Traits>*>(it->get());
+            return static_cast<object_registry<Traits>*>(it->get());
 		}
 	}
 	//assert(false && "class not registered");

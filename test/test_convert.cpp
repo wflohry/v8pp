@@ -206,9 +206,9 @@ struct VariantCheck<std::variant<Ts...>> {
     void operator()(T && value)
     {
         using T_ = std::decay_t<T>;
-        check<T_, Variant, Variant, true>(value);
-        check<T_, Variant, T_, false>(value);
-        check<T_, T_, Variant, true>(value);
+        check<T_, Variant, Variant, true>(value); // variant to variant
+        check<T_, Variant, T_, false>(value); // variant to type
+        check<T_, T_, Variant, true>(value); // type to variant
     }
 
     void operator()(std::tuple<Ts...> && values)
@@ -294,6 +294,6 @@ void test_convert()
     checkArithmetic({bool{true}, float{5.5f}, int32_t{2}});
 
     VariantCheck<ArithmeticVariantReversed> checkArithmeticReversed(context.isolate());
-    checkArithmetic({bool{true}, float{5.5f}, int32_t{2}});
+    checkArithmeticReversed({int32_t{2}, float{5.5f}, bool{true}});
 
 }

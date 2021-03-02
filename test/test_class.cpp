@@ -11,6 +11,7 @@
 #include "v8pp/module.hpp"
 #include "v8pp/object.hpp"
 #include "v8pp/property.hpp"
+#include <variant>
 
 #include "test.hpp"
 

@@ -91,7 +91,7 @@ void check_eq(std::string msg, T actual, U expected)
 	if (actual != expected)
 	{
 		std::stringstream ss;
-		ss << msg << " expected: '" << expected << "' actual: '" << actual << "'";
+        //ss << msg << " expected: '" << expected << "' actual: '" << actual << "'";
 		check(ss.str(), false);
 	}
 }

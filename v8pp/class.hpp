@@ -424,7 +424,7 @@ public:
 	}
 
 	/// Find V8 object handle for a wrapped C++ object, may return empty handle on fail.
-	static v8::Local<v8::Object> find_object(v8::Isolate* isolate,
+    static v8::Local<v8::Object> find_object(v8::Isolate* isolate,
 		object_const_pointer_type const& obj)
 	{
         using namespace detail;
@@ -432,7 +432,7 @@ public:
             return class_info->find_v8_object(Traits::const_pointer_cast(obj));
         }
         return {};
-	}
+    }
 
 	/// Find V8 object handle for a wrapped C++ object, may return empty handle on fail
 	/// or wrap a copy of the obj if class_.auto_wrap_objects()

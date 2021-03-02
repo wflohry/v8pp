@@ -7,6 +7,7 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 #include "v8pp/convert.hpp"
+#include "v8pp/class.hpp"
 #include "test.hpp"
 
 #include <list>
@@ -171,4 +172,36 @@ void test_convert()
 	person p;
 	p.name = "Al"; p.age = 33;
 	test_conv(isolate, p);
+
+    struct U {
+        int value = 1;
+        bool operator==(const U& other) const = default;
+    };
+    struct V {
+        std::string value = "test";
+        bool operator==(const V& other) const = default;
+    };
+
+    v8pp::class_<U, v8pp::raw_ptr_traits> U_class(isolate);
+    U_class.template ctor<>().auto_wrap_objects(true);
+    v8pp::class_<V, v8pp::shared_ptr_traits> V_class(isolate);
+    V_class.template ctor<>().auto_wrap_objects(true);
+    context.set("U", U_class);
+    context.set("V", V_class);
+    auto V_ = std::make_shared<V>(V{ .value = "test" });
+    v8::Local<v8::Value> V_V8 = v8pp::to_v8(isolate, V_);
+    V_class.reference_external(isolate, V_);
+
+    using Variant = std::variant<U, std::shared_ptr<V>, int, std::string>;
+    auto runVariantCheck = [isolate]<typename T, std::size_t I>(T && value, std::integral_constant<std::size_t, I> &&){
+        Variant values = value;
+        auto local = v8pp::convert<Variant>::to_v8(isolate, values);
+        auto back = v8pp::convert<Variant>::from_v8(isolate, local);
+        check_eq(v8pp::detail::type_id<Variant>().name(), std::get<I>(back), value);
+    };
+    runVariantCheck(U { .value = 2 }, std::integral_constant<std::size_t, 0>{});
+    runVariantCheck(V_, std::integral_constant<std::size_t, 1>{});
+    runVariantCheck(-1, std::integral_constant<std::size_t, 2>{});
+
+
 }

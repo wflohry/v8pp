@@ -3,7 +3,7 @@ set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 project(v8pp LANGUAGES CXX C ASM)
 
 if (NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 14)
+  set(CMAKE_CXX_STANDARD 20)
 endif()
 
 option(v8_compress_pointers "Whether v8 was build with V8_COMPRESS_POINTERS" on)
@@ -92,5 +92,5 @@ if (v8pp_build_tests)
     file(GLOB v8pp_test_sources test/*.cpp test/*.hpp)
     add_executable(v8pp_test ${v8pp_test_sources})
     target_link_libraries(v8pp_test PUBLIC v8pp v8_deps)
-    target_compile_options(v8pp_test PUBLIC  -Werror=c++17-extensions -Werror=c++20-extensions)
+    target_compile_options(v8pp_test PUBLIC) # -Werror=c++17-extensions
 endif()

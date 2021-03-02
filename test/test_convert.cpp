@@ -27,13 +27,19 @@ void test_string_conv(v8::Isolate* isolate, Char const (&str)[N])
 {
 	std::basic_string<Char> const str2(str, 2);
 
+	std::basic_string_view<Char> const sv(str);
+	std::basic_string_view<Char> const sv2(str, 2);
+
 	test_conv(isolate, str[0]);
 	test_conv(isolate, str);
+	test_conv(isolate, sv2);
 
 	check_eq("string literal",
 		v8pp::from_v8<Char const*>(isolate, v8pp::to_v8(isolate, str)), str);
 	check_eq("string literal2",
 		v8pp::from_v8<Char const*>(isolate, v8pp::to_v8(isolate, str, 2)), str2);
+	check_eq("string view",
+		v8pp::from_v8<std::basic_string_view<Char>>(isolate, v8pp::to_v8(isolate, sv)), sv);
 
 	Char const* ptr = str;
 	check_eq("string pointer",
@@ -122,6 +128,41 @@ struct convert<person>
 
 } // v8pp
 
+namespace {
+struct U {
+    int value = 1;
+    bool operator==(const U& other) const = default;
+    friend std::ostream& operator<<(std::ostream& os, U const& val)
+    {
+        return os << val.value;
+    }
+};
+struct U2 {
+    double value = 2.;
+    bool operator==(const U2& other) const = default;
+    friend std::ostream& operator<<(std::ostream& os, U2 const& val)
+    {
+        return os << val.value;
+    }
+};
+struct V {
+    std::string value = "test";
+    bool operator==(const V& other) const = default;
+    friend std::ostream& operator<<(std::ostream& os, V const& val)
+    {
+        return os << val.value;
+    }
+};
+struct V2 {
+    std::string value = "test";
+    bool operator==(const V2& other) const = default;
+    friend std::ostream& operator<<(std::ostream& os, V2 const& val)
+    {
+        return os << val.value;
+    }
+};
+} // namespace
+
 void test_convert()
 {
 	v8pp::context context;
@@ -173,22 +214,7 @@ void test_convert()
 	p.name = "Al"; p.age = 33;
 	test_conv(isolate, p);
 
-    struct U {
-        int value = 1;
-        bool operator==(const U& other) const = default;
-    };
-    struct U2 {
-        double value = 2.;
-        bool operator==(const U2& other) const = default;
-    };
-    struct V {
-        std::string value = "test";
-        bool operator==(const V& other) const = default;
-    };
-    struct V2 {
-        std::string value = "test";
-        bool operator==(const V2& other) const = default;
-    };
+
 
     v8pp::class_<U, v8pp::raw_ptr_traits> U_class(isolate);
     U_class.template ctor<>().auto_wrap_objects(true);
@@ -198,10 +224,6 @@ void test_convert()
     V_class.template ctor<>().auto_wrap_objects(true);
     v8pp::class_<V2, v8pp::shared_ptr_traits> V2_class(isolate);
     V2_class.template ctor<>().auto_wrap_objects(true);
-    context.set("U", U_class);
-    context.set("V", V_class);
-    context.set("U2", U2_class);
-    context.set("V2", V2_class);
     auto V_ = std::make_shared<V>(V{ .value = "test" });
     auto V2_ = std::make_shared<V2>(V2{.value = "test2"});
     V_class.reference_external(isolate, V_);

@@ -9,7 +9,7 @@
 #ifndef V8PP_THROW_EX_HPP_INCLUDED
 #define V8PP_THROW_EX_HPP_INCLUDED
 
-#include <string>
+#include <string_view>
 
 #include <v8.h>
 
@@ -17,21 +17,10 @@
 
 namespace v8pp {
 
-v8::Local<v8::Value> throw_ex(v8::Isolate* isolate, char const* str);
+v8::Local<v8::Value> throw_ex(v8::Isolate* isolate, std::string_view str);
 
-v8::Local<v8::Value> throw_ex(v8::Isolate* isolate, char const* str,
+v8::Local<v8::Value> throw_ex(v8::Isolate* isolate, std::string_view str,
 	v8::Local<v8::Value> (*exception_ctor)(v8::Local<v8::String>));
-
-inline v8::Local<v8::Value> throw_ex(v8::Isolate* isolate, std::string const& str)
-{
-	return throw_ex(isolate, str.c_str());
-}
-
-inline v8::Local<v8::Value> throw_ex(v8::Isolate* isolate, std::string const& str,
-	v8::Local<v8::Value> (*exception_ctor)(v8::Local<v8::String>))
-{
-	return throw_ex(isolate, str.c_str(), exception_ctor);
-}
 
 } // namespace v8pp
 

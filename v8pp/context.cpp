@@ -17,6 +17,8 @@
 #include <fstream>
 
 #if defined(WIN32)
+#define VC_EXTRALEAN
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 static char const path_sep = '\\';
 #else
@@ -33,16 +35,6 @@ struct context::dynamic_module
 {
 	void* handle;
 	v8::Global<v8::Value> exports;
-
-	dynamic_module() = default;
-	dynamic_module(dynamic_module&& other)
-		: handle(other.handle)
-		, exports(std::move(other.exports))
-	{
-		other.handle = nullptr;
-	}
-
-	dynamic_module(dynamic_module const&) = delete;
 };
 
 void context::load_module(v8::FunctionCallbackInfo<v8::Value> const& args)
@@ -60,9 +52,9 @@ void context::load_module(v8::FunctionCallbackInfo<v8::Value> const& args)
 		}
 
 		context* ctx = detail::external_data::get<context*>(args.Data());
-		context::dynamic_modules::iterator it = ctx->modules_.find(name);
 
 		// check if module is already loaded
+		const auto it = ctx->modules_.find(name);
 		if (it != ctx->modules_.end())
 		{
 			result = v8::Local<v8::Value>::New(isolate, it->second.exports);
@@ -234,16 +226,16 @@ context::~context()
 	}
 }
 
-context& context::set(char const* name, v8::Local<v8::Value> value)
+context& context::value(std::string_view name, v8::Local<v8::Value> value)
 {
 	v8::HandleScope scope(isolate_);
-	to_local(isolate_, impl_)->Global()->Set(isolate_->GetCurrentContext(), to_v8(isolate_, name), value).FromJust();
+	global()->Set(isolate_->GetCurrentContext(), to_v8(isolate_, name), value).FromJust();
 	return *this;
 }
 
-context& context::set(char const* name, module& m)
+context& context::module(std::string_view name, v8pp::module& m)
 {
-	return set(name, m.new_instance());
+	return value(name, m.new_instance());
 }
 
 v8::Local<v8::Value> context::run_file(std::string const& filename)
@@ -258,8 +250,7 @@ v8::Local<v8::Value> context::run_file(std::string const& filename)
 	return run_script(std::string(begin, end), filename);
 }
 
-v8::Local<v8::Value> context::run_script(std::string const& source,
-	std::string const& filename)
+v8::Local<v8::Value> context::run_script(std::string_view source, std::string_view filename)
 {
 	v8::EscapableHandleScope scope(isolate_);
 	v8::Local<v8::Context> context = isolate_->GetCurrentContext();

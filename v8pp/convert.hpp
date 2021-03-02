@@ -888,6 +888,7 @@ private:
                 return out;
             }
         }
+        return std::nullopt;
     }
 
 

@@ -839,9 +839,9 @@ struct convert<std::variant<Ts...>>
             // first, attempt to find the most suitable
             const double value_ = value->NumberValue(context).FromJust();
             if (ceil(value_) == value_){
-                out = getObject<std::is_floating_point, Ts...>(isolate, value);
-            } else {
                 out = getObject<std::is_integral, Ts...>(isolate, value);
+            } else {
+                out = getObject<std::is_floating_point, Ts...>(isolate, value);
             }
             // if that doesn't work, find any arithmetic
             if (!out){

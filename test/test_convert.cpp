@@ -177,31 +177,49 @@ void test_convert()
         int value = 1;
         bool operator==(const U& other) const = default;
     };
+    struct U2 {
+        double value = 2.;
+        bool operator==(const U2& other) const = default;
+    };
     struct V {
         std::string value = "test";
         bool operator==(const V& other) const = default;
     };
+    struct V2 {
+        std::string value = "test";
+        bool operator==(const V2& other) const = default;
+    };
 
     v8pp::class_<U, v8pp::raw_ptr_traits> U_class(isolate);
     U_class.template ctor<>().auto_wrap_objects(true);
+    v8pp::class_<U2, v8pp::raw_ptr_traits> U2_class(isolate);
+    U2_class.template ctor<>().auto_wrap_objects(true);
     v8pp::class_<V, v8pp::shared_ptr_traits> V_class(isolate);
     V_class.template ctor<>().auto_wrap_objects(true);
+    v8pp::class_<V2, v8pp::shared_ptr_traits> V2_class(isolate);
+    V2_class.template ctor<>().auto_wrap_objects(true);
     context.set("U", U_class);
     context.set("V", V_class);
+    context.set("U2", U2_class);
+    context.set("V2", V2_class);
     auto V_ = std::make_shared<V>(V{ .value = "test" });
-    v8::Local<v8::Value> V_V8 = v8pp::to_v8(isolate, V_);
+    auto V2_ = std::make_shared<V2>(V2{.value = "test2"});
     V_class.reference_external(isolate, V_);
+    V2_class.reference_external(isolate, V2_);
 
-    using Variant = std::variant<U, std::shared_ptr<V>, int, std::string>;
-    auto runVariantCheck = [isolate]<typename T, std::size_t I>(T && value, std::integral_constant<std::size_t, I> &&){
+    using Variant = std::variant<U, std::shared_ptr<V>, int, std::string, U2, std::shared_ptr<V2>>;
+    auto runVariantCheck = [isolate]<typename T>(T && value){
         Variant values = value;
         auto local = v8pp::convert<Variant>::to_v8(isolate, values);
         auto back = v8pp::convert<Variant>::from_v8(isolate, local);
-        check_eq(v8pp::detail::type_id<Variant>().name(), std::get<I>(back), value);
+        check_eq(v8pp::detail::type_id<Variant>().name(), std::get<std::decay_t<T>>(back), value);
     };
-    runVariantCheck(U { .value = 2 }, std::integral_constant<std::size_t, 0>{});
-    runVariantCheck(V_, std::integral_constant<std::size_t, 1>{});
-    runVariantCheck(-1, std::integral_constant<std::size_t, 2>{});
+    runVariantCheck(U { .value = 2 });
+    runVariantCheck(V_);
+    runVariantCheck(-1);
+    runVariantCheck(std::string("Hello"));
+    runVariantCheck(U2 { .value = 3. });
+    runVariantCheck(V2_);
 
 
 }

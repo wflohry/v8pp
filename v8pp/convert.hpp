@@ -24,6 +24,7 @@
 #include <variant>
 #include "v8pp/ptr_traits.hpp"
 #include "optional"
+#include "math.h"
 
 namespace v8pp {
 
@@ -751,6 +752,12 @@ struct convert<std::variant<Ts...>>
     template <typename T> struct isObj<std::shared_ptr<T>> : std::true_type {};
     template <typename T> struct isSharedPtr : std::false_type {};
     template <typename T> struct isSharedPtr<std::shared_ptr<T>> : std::true_type {};
+    template <typename T> struct isString : std::false_type {};
+    template<typename Char, typename Traits, typename Alloc> struct isString<std::basic_string<Char, Traits, Alloc>> : std::true_type {};
+    template <> struct isString<const char*> : std::true_type {};
+    template <> struct isString<char16_t const*> : std::true_type {};
+    template <> struct isString<wchar_t const*> : std::true_type {};
+    template <typename T> struct isAny : std::true_type {};
 
 
     static bool is_valid(v8::Isolate*, v8::Local<v8::Value> value)
@@ -773,14 +780,27 @@ struct convert<std::variant<Ts...>>
         } else if (value->IsArray()){
             out = getObject<isArray, Ts...>(isolate, value);
         } else if (value->IsNumber()){
-            // todo: find most suitable arithmetic conversion
-            out = getObject<std::is_arithmetic, Ts...>(isolate, value);
+            // first, attempt to find the most suitable
+            const double value_ = value->NumberValue(context).FromJust();
+            if (ceil(value_) == value_){
+                out = getObject<std::is_floating_point, Ts...>(isolate, value);
+            } else {
+                out = getObject<std::is_integral, Ts...>(isolate, value);
+            }
+            // if that doesn't work, find any arithmetic
+            if (!out){
+                out = getObject<std::is_arithmetic, Ts...>(isolate, value);
+            }
         } else if (value->IsBoolean()){
             out = getObject<isBoolean, Ts...>(isolate, value);
             if (!out){
                 // implicit cast
                 out = getObject<std::is_integral, Ts...>(isolate, value);
             }
+        } else if (value->IsString()){
+            out = getObject<isString, Ts...>(isolate, value);
+        } else {
+            out = getObject<isAny, Ts...>(isolate, value);
         }
         if (out){
             return *out;

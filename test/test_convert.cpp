@@ -130,32 +130,44 @@ struct convert<person>
 
 namespace {
 struct U {
+    U(int value = 1) : value(value) {}
     int value = 1;
-    bool operator==(const U& other) const = default;
+    bool operator==(const U& other) const {
+        return value == other.value;
+    }
     friend std::ostream& operator<<(std::ostream& os, U const& val)
     {
         return os << val.value;
     }
 };
 struct U2 {
+    U2(double value = 2.) : value(value) {}
     double value = 2.;
-    bool operator==(const U2& other) const = default;
+    bool operator==(const U2& other) const {
+        return value == other.value;
+    }
     friend std::ostream& operator<<(std::ostream& os, U2 const& val)
     {
         return os << val.value;
     }
 };
 struct V {
+    V(std::string value = "") : value(value) {}
     std::string value = "test";
-    bool operator==(const V& other) const = default;
+    bool operator==(const V& other) const {
+        return value == other.value;
+    }
     friend std::ostream& operator<<(std::ostream& os, V const& val)
     {
         return os << val.value;
     }
 };
 struct V2 {
+    V2(std::string value = "") : value(value) {}
     std::string value = "test";
-    bool operator==(const V2& other) const = default;
+    bool operator==(const V2& other) const {
+        return value == other.value;
+    }
     friend std::ostream& operator<<(std::ostream& os, V2 const& val)
     {
         return os << val.value;
@@ -163,18 +175,45 @@ struct V2 {
 };
 } // namespace
 
-template <typename Variant>
-struct VariantCheck {
+template <typename T> struct VariantCheck {};
+
+template <typename ... Ts>
+struct VariantCheck<std::variant<Ts...>> {
     VariantCheck(v8::Isolate * isolate) : isolate(isolate) {}
     v8::Isolate * isolate;
+    using Variant = std::variant<Ts...>;
+
+    template <typename T>
+    static T get(const T& in){
+        return in;
+    }
+    template <typename T>
+    static T get(const std::variant<Ts...> &in){
+        return std::get<T>(in);
+    }
+
+    template <typename T, typename From, typename To, bool get>
+    void check(const T &value)
+    {
+        From values = value;
+        auto local = v8pp::convert<From>::to_v8(isolate, values);
+        auto back = v8pp::convert<To>::from_v8(isolate, local);
+        T returned = VariantCheck::get<T>(back);
+        ::check(v8pp::detail::type_id<Variant>().name(), returned == value);
+    }
 
     template <typename T>
     void operator()(T && value)
     {
-        Variant values = value;
-        auto local = v8pp::convert<Variant>::to_v8(isolate, values);
-        auto back = v8pp::convert<Variant>::from_v8(isolate, local);
-        check_eq(v8pp::detail::type_id<Variant>().name(), std::get<std::decay_t<T>>(back), value);
+        using T_ = std::decay_t<T>;
+        check<T_, Variant, Variant, true>(value);
+        check<T_, Variant, T_, false>(value);
+        check<T_, T_, Variant, true>(value);
+    }
+
+    void operator()(std::tuple<Ts...> && values)
+    {
+        (operator()(std::get<Ts>(values)),...);
     }
 };
 
@@ -230,7 +269,7 @@ void test_convert()
 	test_conv(isolate, p);
 
 
-
+    // Variant check
     v8pp::class_<U, v8pp::raw_ptr_traits> U_class(isolate);
     U_class.template ctor<>().auto_wrap_objects(true);
     v8pp::class_<U2, v8pp::raw_ptr_traits> U2_class(isolate);
@@ -239,30 +278,22 @@ void test_convert()
     V_class.template ctor<>().auto_wrap_objects(true);
     v8pp::class_<V2, v8pp::shared_ptr_traits> V2_class(isolate);
     V2_class.template ctor<>().auto_wrap_objects(true);
-    auto V_ = std::make_shared<V>(V{ .value = "test" });
-    auto V2_ = std::make_shared<V2>(V2{.value = "test2"});
+    auto V_ = std::make_shared<V>(V{"test" });
+    auto V2_ = std::make_shared<V2>(V2{"test2"});
     V_class.reference_external(isolate, V_);
     V2_class.reference_external(isolate, V2_);
 
     using Variant = std::variant<U, std::shared_ptr<V>, int, std::string, U2, std::shared_ptr<V2>>;
-    VariantCheck<Variant> check(context.isolate());
-    check(U { .value = 2 });
-    check(V_);
-    check(-1);
-    check(std::string("Hello"));
-    check(U2 { .value = 3. });
-    check(V2_);
-
     using ArithmeticVariant = std::variant<bool, float, int32_t>;
-    VariantCheck<ArithmeticVariant> checkArithmetic(context.isolate());
-    checkArithmetic(bool{true});
-    checkArithmetic(float{5.5f});
-    checkArithmetic(int32_t{2});
-
-
     using ArithmeticVariantReversed = std::variant<int32_t, float, bool>;
+
+    VariantCheck<Variant> check{isolate};
+    check({U{2}, V_, -1, std::string("Hello"), U2{3.}, V2_});
+
+    VariantCheck<ArithmeticVariant> checkArithmetic(context.isolate());
+    checkArithmetic({bool{true}, float{5.5f}, int32_t{2}});
+
     VariantCheck<ArithmeticVariantReversed> checkArithmeticReversed(context.isolate());
-    checkArithmetic(bool{true});
-    checkArithmetic(float{5.5f});
-    checkArithmetic(int32_t{2});
+    checkArithmetic({bool{true}, float{5.5f}, int32_t{2}});
+
 }

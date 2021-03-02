@@ -785,7 +785,8 @@ struct convert<std::variant<Ts...>>
     }
 
     static to_type to_v8(v8::Isolate* isolate, std::variant<Ts...> const& value){
-        return std::visit([isolate]<typename T>(const T & value){
+        return std::visit([isolate](auto && value){
+            using T = std::decay_t<decltype(value)>;
             auto out = v8pp::convert<T>::to_v8(isolate, value);
             return v8::Local<v8::Value>{out};
         }, value);

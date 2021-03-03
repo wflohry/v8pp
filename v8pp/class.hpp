@@ -452,7 +452,16 @@ public:
 	{
         using namespace detail;
         if (auto class_info = classes::find<Traits>(isolate, type_id<T>())){
-            return class_info->find_v8_object(Traits::const_pointer_cast(obj));
+            v8::Local<v8::Object> wrapped_object = class_info->find_v8_object(Traits::const_pointer_cast(obj));
+            if (wrapped_object.IsEmpty() && class_info->auto_wrap_objects())
+            {
+                object_pointer_type clone = Traits::ptr_clone(obj);
+                if (clone)
+                {
+                    wrapped_object = class_info->wrap_object(clone, true);
+                }
+            }
+            return wrapped_object;
         }
         return {};
     }

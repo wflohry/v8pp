@@ -155,10 +155,10 @@ void test_class_()
 	};
 
 	Z extra_dtor_context;
-	auto const X_dtor = [extra_dtor_context](v8::Isolate*, typename Traits::template object_pointer_type<X> const& obj)
+    auto const X_dtor = [extra_dtor_context](v8::Isolate* isolate, typename Traits::template object_pointer_type<X> const& obj)
 	{
 		(void)extra_dtor_context;
-		Traits::destroy(obj);
+        Traits::destroy(isolate, obj);
 	};
 
 	v8pp::class_<X, Traits> X_class(isolate, X_dtor);
@@ -281,14 +281,14 @@ void test_class_()
 
 	check_eq("Y object", run_script<int>(context, "y = new Y(-100); y.konst + y.var"), -1);
 
-	auto y1 = Traits::template create<Y>(-1);
+    auto y1 = Traits::template create<Y>(isolate, -1);
 
 	v8::Local<v8::Object> y1_obj =
 		v8pp::class_<Y, Traits>::reference_external(context.isolate(), y1);
 	check("y1", v8pp::from_v8<decltype(y1)>(isolate, y1_obj) == y1);
 	check("y1_obj", v8pp::to_v8(isolate, y1) == y1_obj);
 
-	auto y2 = Traits::template create<Y>(-2);
+    auto y2 = Traits::template create<Y>(isolate, -2);
 	v8::Local<v8::Object> y2_obj =
 		v8pp::class_<Y, Traits>::import_external(context.isolate(), y2);
 	check("y2", v8pp::from_v8<decltype(y2)>(isolate, y2_obj) == y2);
@@ -423,6 +423,8 @@ void test_multiple_inheritance()
 		"c = new C(); c.F = 100; c.G = 200; c.H = 300; c.F + c.G + c.H"), 100 + 200 + 300);
 }
 
+static v8::Isolate * X_isolate_ = nullptr;
+
 template<typename Traits>
 void test_const_instance_in_module()
 {
@@ -431,13 +433,14 @@ void test_const_instance_in_module()
 		int f(int x) { return x; }
 		static typename Traits::template object_pointer_type<X> xconst()
 		{
-			static auto const xconst_ = Traits::template create<X>();
+            static auto const xconst_ = Traits::template create<X>(X_isolate_);
 			return xconst_;
 		}
 	};
 
 	v8pp::context context;
 	v8::Isolate* isolate = context.isolate();
+    X_isolate_ = isolate;
 	v8::HandleScope scope(isolate);
 
 	v8pp::class_<X, Traits> X_class(isolate);

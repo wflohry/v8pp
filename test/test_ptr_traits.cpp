@@ -61,15 +61,15 @@ private:
 
 struct Y_raw_ptr_traits : v8pp::raw_ptr_traits
 {
-	template<typename T>
-	static Y* create(int arg)
+    template<typename T>
+    static Y* create(v8::Isolate *,int arg)
 	{
 		++ctor_count;
 		return Y::make(arg);
 	}
 
 	template<typename T>
-	static void destroy(Y* object)
+    static void destroy(v8::Isolate *,Y* object)
 	{
 		Y::done(object);
 		++dtor_count;
@@ -79,14 +79,14 @@ struct Y_raw_ptr_traits : v8pp::raw_ptr_traits
 struct Y_shared_ptr_traits : v8pp::shared_ptr_traits
 {
 	template<typename T>
-	static std::shared_ptr<Y> create(int arg)
+    static std::shared_ptr<Y> create(v8::Isolate *,int arg)
 	{
 		++ctor_count;
 		return std::shared_ptr<Y>(Y::make(arg), Y::done);
 	}
 
 	template<typename T>
-	static void destroy(std::shared_ptr<Y> const&)
+    static void destroy(v8::Isolate *,std::shared_ptr<Y> const&)
 	{
 		// std::shared_ptr deleter will work
 		++dtor_count;
@@ -100,23 +100,23 @@ struct Y_shared_ptr_traits : v8pp::shared_ptr_traits
 };
 
 template<typename T, typename Traits, typename ...Args>
-void test_create_destroy_(Args&&... args)
+void test_create_destroy_(v8::Isolate * isolate, Args&&... args)
 {
-	auto obj = Traits::template create<T>(std::forward<Args>(args)...);
-	Traits::template destroy<T>(obj);
+    auto obj = Traits::template create<T>(isolate, std::forward<Args>(args)...);
+    Traits::template destroy<T>(isolate, obj);
 }
 
 void test_create_destroy(v8::FunctionCallbackInfo<v8::Value> const& args)
 {
 	ctor_types = ctor_count = dtor_count = 0;
+    v8::Isolate * isolate = args.GetIsolate();
+    test_create_destroy_<X, v8pp::raw_ptr_traits>(isolate);
+    test_create_destroy_<X, v8pp::raw_ptr_traits>(isolate, 1);
+    test_create_destroy_<X, v8pp::shared_ptr_traits>(isolate, true, 1.0f);
+    test_create_destroy_<X, v8pp::shared_ptr_traits>(isolate, args);
 
-	test_create_destroy_<X, v8pp::raw_ptr_traits>();
-	test_create_destroy_<X, v8pp::raw_ptr_traits>(1);
-	test_create_destroy_<X, v8pp::shared_ptr_traits>(true, 1.0f);
-	test_create_destroy_<X, v8pp::shared_ptr_traits>(args);
-
-	test_create_destroy_<Y, Y_raw_ptr_traits>(1);
-	test_create_destroy_<Y, Y_shared_ptr_traits>(3);
+    test_create_destroy_<Y, Y_raw_ptr_traits>(isolate, 1);
+    test_create_destroy_<Y, Y_shared_ptr_traits>(isolate, 3);
 }
 
 void test_raw_ptr_traits()
@@ -155,7 +155,7 @@ void test_shared_ptr_traits()
 	static_assert(std::is_same<traits::const_pointer_type, std::shared_ptr<void const>>::value, "shared const_pointer_type");
 
 	static_assert(std::is_same<traits::object_pointer_type<Y>, std::shared_ptr<Y>>::value, "shared object_pointer_type");
-	static_assert(std::is_same<traits::object_const_pointer_type<Y>, std::shared_ptr<Y const>>::value, "shared object_const_pointer_type");
+    static_assert(std::is_same<traits::object_const_pointer_type<Y>, const std::shared_ptr<Y>>::value, "shared object_const_pointer_type");
 
 	static_assert(std::is_same<traits::object_id, void*>::value, "shared object_id");
 	static_assert(std::is_same<traits::convert_ptr<Y>, v8pp::convert<std::shared_ptr<Y>>>::value, "shared convert_ptr");

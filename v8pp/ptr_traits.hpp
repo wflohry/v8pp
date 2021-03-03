@@ -10,6 +10,7 @@
 #define V8PP_PTR_TRAITS_HPP_INCLUDED
 
 #include <memory>
+#include "v8.h"
 
 namespace v8pp {
 
@@ -40,28 +41,40 @@ struct raw_ptr_traits
 	template<typename T>
 	using convert_ref = convert<T&>;
 
+    template <typename T, typename ... Args>
+    static object_pointer_type<T> createImpl(v8::Isolate * isolate, Args&& ... args){
+        if (T* data = (T*) isolate->GetArrayBufferAllocator()->Allocate(sizeof(T))){
+            return new(data) T(std::forward<Args>(args)...);
+        }
+        return nullptr;
+    }
+
 	template<typename T, typename ...Args>
-	static object_pointer_type<T> create(Args&&... args)
+    static object_pointer_type<T> create(v8::Isolate * isolate, Args&&... args)
 	{
-		return new T(std::forward<Args>(args)...);
+        return createImpl<T>(isolate, std::forward<Args>(args)...);
 	}
 
 	template<typename T>
-	static object_pointer_type<T> clone(T const& src)
+    static object_pointer_type<T> clone(v8::Isolate * isolate, T const& src)
 	{
-		return new T(src);
+        return createImpl<T>(isolate, src);
 	}
 
     template<typename T>
-    static object_pointer_type<T> ptr_clone(object_const_pointer_type<T> src)
+    static object_pointer_type<T> ptr_clone(v8::Isolate * isolate, object_const_pointer_type<T> src)
     {
-        return src ? new T(*src) : nullptr;
+        return src ? createImpl<T>(isolate, *src) : nullptr;
     }
 
 	template<typename T>
-	static void destroy(object_pointer_type<T> const& ptr)
-	{
-		delete ptr;
+    static void destroy(v8::Isolate * isolate, object_pointer_type<T> const& ptr)
+    {
+        if (!ptr) return;
+        if constexpr (!std::is_trivially_destructible<T>::value){
+            ptr->~T();
+        }
+        isolate->GetArrayBufferAllocator()->Free(ptr, sizeof(T));
 	}
 
 	template<typename T>
@@ -97,26 +110,28 @@ struct shared_ptr_traits
 	template<typename T>
 	using convert_ref = convert<T, ref_from_shared_ptr>;
 
-	template<typename T, typename ...Args>
-	static object_pointer_type<T> create(Args&&... args)
+
+
+    template<typename T, typename ...Args>
+    static object_pointer_type<T> create(v8::Isolate*, Args&&... args)
 	{
 		return std::make_shared<T>(std::forward<Args>(args)...);
 	}
 
 	template<typename T>
-	static object_pointer_type<T> clone(T const& src)
+    static object_pointer_type<T> clone(v8::Isolate*, T const& src)
 	{
 		return std::make_shared<T>(src);
 	}
 
     template<typename T>
-    static object_pointer_type<T> ptr_clone(object_const_pointer_type<T> src)
+    static object_pointer_type<T> ptr_clone(v8::Isolate*, object_const_pointer_type<T> src)
     {
         return { src };
     }
 
 	template<typename T>
-	static void destroy(object_pointer_type<T> const&)
+    static void destroy(v8::Isolate*, object_pointer_type<T> const&)
 	{
 		// do nothing with reference-counted object
 	}

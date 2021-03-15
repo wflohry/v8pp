@@ -277,7 +277,7 @@ public:
 		v8::HandleScope scope(isolate());
 
 		v8::Local<v8::Name> v8_name = v8pp::to_v8(isolate(), name);
-		v8::Local<v8::Data> wrapped_fun;
+		v8::Local<v8::Data> wrapped_fun; 
 
 		if constexpr (is_mem_fun)
 		{

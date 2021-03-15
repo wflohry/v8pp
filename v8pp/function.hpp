@@ -10,7 +10,6 @@
 #define V8PP_FUNCTION_HPP_INCLUDED
 
 #include <cstring> // for memcpy
-#include <tuple>
 #include <type_traits>
 
 #include "v8pp/call_from_v8.hpp"
